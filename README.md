@@ -109,9 +109,9 @@ Advanced approximation techniques include:
 
 Modern state-of-the-art heuristics achieve exceptional empirical performance through local search:
 
-**TIVC** [[zhang2023tivc]](#References): Employs 3-improvement local search with tiny perturbations, achieving empirical ratios $\sim$1.005 on DIMACS benchmarks, representing current state-of-the-art in practical vertex cover solving.
+**TIVC** [[zhang2023tivc]](#References): Employs 3-improvement local search with tiny perturbations, achieving empirical ratios $\sim$ 1.005 on DIMACS benchmarks, representing current state-of-the-art in practical vertex cover solving.
 
-**FastVC and Variants** [[cai2017finding]](#References): Fast local search with pivoting and probing, achieving ratios $\sim$1.02 with sub-second runtimes on million-vertex graphs.
+**FastVC and Variants** [[cai2017finding]](#References): Fast local search with pivoting and probing, achieving ratios $\sim$ 1.02 with sub-second runtimes on million-vertex graphs.
 
 **MetaVC2** [[luo2019local]](#References): Adaptive meta-heuristic combining tabu search, simulated annealing, and genetic operators, achieving ratios 1.01--1.05 across heterogeneous graph classes.
 
@@ -330,7 +330,7 @@ This section presents a structured analysis of how the ensemble's minimum-select
 
 **Lemma 4 (Hub Concentration Optimality):** For a star graph (hub $h$ connected to $d$ leaves), the reduction-based projection achieves an optimal cover containing only the hub, with size $1 = \mathrm{OPT}$.
 
-**Proof:** The reduction creates $d$ auxiliary vertices $(h,i)$, each with weight $1/d$, connected to leaves. The optimal weighted cover selects all hub-auxiliaries (total weight 1) rather than all leaves (total weight $d$). Projection yields the singleton set $\{h\}$, which is optimal.
+**Proof:** The reduction creates $d$ auxiliary vertices $(h,i)$, each with weight $1/d$, connected to leaves. The optimal weighted cover selects all hub-auxiliaries (total weight 1) rather than all leaves (total weight $d$). Projection yields the singleton set $\\{h\\}$, which is optimal.
 
 **Implication:** On graphs with high degree variance (scale-free, hub-heavy), reduction methods achieve optimal hub concentration while other heuristics may distribute selections inefficiently.
 
@@ -361,7 +361,7 @@ While we have demonstrated optimality or near-optimality on specific graph class
 1. **Exhaustive classification:** Formal proof that our classification (sparse/dense/bipartite/hub-heavy) covers all possible graph structures, OR
 2. **Counterexample construction:** An adversarial graph where all five heuristics simultaneously achieve ratio $\geq \sqrt{2}$
 
-The absence of such counterexamples across 233+ diverse instances, combined with theoretical analysis of complementarity, provides strong evidence for sub-$\sqrt{2}$ performance, but does not constitute a complete worst-case proof.
+The absence of such counterexamples across 233+ diverse instances, combined with theoretical analysis of complementarity, provides strong evidence for sub $\sqrt{2}$ performance, but does not constitute a complete worst-case proof.
 
 ---
 
@@ -705,7 +705,7 @@ This independent validation study, conducted on December 21, 2025 using Gemini A
 **Key Observations:**
 1. **Improvement Over Greedy:** Hvala consistently outperforms greedy by 2.7-3.5%
 2. **Ratio Stability:** Approximation ratio improved slightly from 1.0712 to 1.0693 as graph size doubled
-3. **Theoretical Context:** Achieved ratio of 1.069 against theoretical optimum (~0.5446$n$)
+3. **Theoretical Context:** Achieved ratio of 1.069 against theoretical optimum (~0.5446 $n$)
 4. **Computational Feasibility:** 20,000-vertex graph solved in 162.09 seconds
 5. **AI Verification:** Independent validation through Gemini AI confirms correctness and reproducibility
 
@@ -955,7 +955,7 @@ We invite vigorous scrutiny, attempted refutation, and independent validation fr
 
 **[khot2018pseudorandom]** Khot, Subhash and Minzer, Dor and Safra, Muli (2018). *Pseudorandom Sets in Grassmann Graph Have Near-Perfect Expansion.* 2018 IEEE 59th Annual Symposium on Foundations of Computer Science, 592–601. Paris, France. DOI: [10.1109/FOCS.2018.00062](https://doi.org/10.1109/FOCS.2018.00062).
 
-**[khot2008vertex]** Khot, Subhash and Regev, Oded (2008). *Vertex Cover Might Be Hard to Approximate to Within $2-\epsilon$.* Journal of Computer and System Sciences, 74(3), 335–349. DOI: [10.1016/j.jcss.2007.06.019](https://doi.org/10.1016/j.jcss.2007.06.019).
+**[khot2008vertex]** Khot, Subhash and Regev, Oded (2008). *Vertex Cover Might Be Hard to Approximate to Within* $2-\epsilon$. Journal of Computer and System Sciences, 74(3), 335–349. DOI: [10.1016/j.jcss.2007.06.019](https://doi.org/10.1016/j.jcss.2007.06.019).
 
 **[khot2002unique]** Khot, Subhash (2002). *On the Power of Unique 2-Prover 1-Round Games.* Proceedings of the 34th Annual ACM Symposium on Theory of Computing, 767–775. Montreal, Canada. DOI: [10.1145/509907.510017](https://doi.org/10.1145/509907.510017).
 
