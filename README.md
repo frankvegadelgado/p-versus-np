@@ -741,9 +741,10 @@ We present five categories of evidence supporting our hypothesis that $\rho < \s
 **Theoretical Basis:** The reduction to maximum degree-1 maintains key properties:
 
 **Theorem 1 (Weight Preservation):** For any vertex $u$ in the original graph $G$ with degree $k$, the total weight of its auxiliary vertices in $G'$ equals 1:
-\[
+
+$$
 \sum_{i=0}^{k-1} w_{(u,i)} = \sum_{i=0}^{k-1} \frac{1}{k} = 1
-\]
+$$
 
 **Theorem 2 (Lower Bound Preservation):** Any valid vertex cover in $G$ induces a weighted vertex cover in $G'$ with weight at most the size of the original cover.
 
