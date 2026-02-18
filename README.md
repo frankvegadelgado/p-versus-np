@@ -827,7 +827,7 @@ Whether the hypothesis proves true (solving P versus NP) or false (revealing lim
 ---
 
 **Documentation**  
-Available as PDF at *[An Approximate Solution to the Minimum Vertex Cover Problem: The Hvala Algorithm](https://www.preprints.org/manuscript/202506.0875/v10)*.
+Available as PDF at *[An Approximate Solution to the Minimum Vertex Cover Problem: The Hvala Algorithm](https://www.preprints.org/manuscript/202506.0875/v11)*.
 
 The Hvala algorithm is available as a Python package: [https://pypi.org/project/hvala](https://pypi.org/project/hvala)  
 Source code and full experimental data are provided in the supplementary materials.
