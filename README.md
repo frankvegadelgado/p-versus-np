@@ -9,15 +9,17 @@
 
 ## Abstract
 
-We present the Hvala algorithm, an ensemble approximation method for the Minimum Vertex Cover problem that combines graph reduction techniques, optimal solving on degree-1 graphs, and complementary heuristics (local-ratio, maximum-degree greedy, minimum-to-minimum). The algorithm processes connected components independently and selects the minimum-cardinality solution among five candidates for each component. 
+We present the **Hvala** algorithm, an ensemble approximation method for the Minimum Vertex Cover problem. Hvala combines, in a component-wise minimum-selection scheme, *five* complementary heuristics: (i) a minimum weighted dominating set on a degree-1 reduction, (ii) a minimum weighted vertex cover on the same degree-1 reduction, (iii) the NetworkX local-ratio 2-approximation, (iv) a maximum-degree greedy, and (v) a minimum-to-minimum heuristic.
 
-**Empirical Performance:** Across 233+ diverse instances from four independent experimental studies--including DIMACS benchmarks, real-world networks (up to 262,111 vertices), NPBench hard instances, and AI-validated stress tests--the algorithm achieves approximation ratios consistently in the range 1.001--1.071, with no observed instance exceeding 1.071. 
+**Relation to a companion paper.** The Hallelujah algorithm studies in depth *one single* heuristic — the degree-1 reduction in minimum weighted vertex cover form — which corresponds to component (ii) of Hvala. The present work situates that single heuristic inside a broader compendium and analyses how the other four heuristics cover each other's worst cases.
 
-**Theoretical Analysis:** We prove optimality on specific graph classes: paths and trees (via Min-to-Min), complete graphs and regular graphs (via maximum-degree greedy), skewed bipartite graphs (via reduction-based projection), and hub-heavy graphs (via reduction). We demonstrate structural complementarity: pathological worst-cases for each heuristic are precisely where another heuristic achieves optimality, suggesting the ensemble's minimum-selection strategy should maintain approximation ratios well below $\sqrt{2} \approx 1.414$ across diverse graph families. 
+**Empirical confirmation.** Across 201+ diverse instances from three independent experimental studies (Resistire real-world networks up to 262,111 vertices; Creo NPBench/DIMACS-complement hard instances; Gemini–Vega AI-validated stress tests on 3-regular graphs up to 20,000 vertices), Hvala attains approximation ratios in the range 1.001–1.071, with no observed instance exceeding 1.071.
 
-**Open Question:** Whether this ensemble approach provably achieves $\rho < \sqrt{2}$ for *all possible graphs*--including adversarially constructed instances--remains an important theoretical challenge. Such a complete proof would imply P = NP under the Strong Exponential Time Hypothesis (SETH), representing one of the most significant breakthroughs in mathematics and computer science. We present strong empirical evidence and theoretical analysis on identified graph classes while maintaining intellectual honesty about the gap between scenario-based analysis and complete worst-case proof. The algorithm operates in $\mathcal{O}(m \log n)$ time with $\mathcal{O}(m)$ space and is publicly available via PyPI as the Hvala package.
+**Theoretical analysis.** We prove optimality on specific graph classes — paths and trees (Min-to-Min), cliques and regular graphs (max-degree greedy), skewed bipartite graphs (degree-1 reduction), and hub-heavy/star graphs (degree-1 reduction). We argue *structural orthogonality*: the pathological worst case of each heuristic is precisely a graph family on which at least one other heuristic attains optimality. This mutual worst-case coverage is the central structural reason why the component-wise minimum over the five heuristics is expected to remain well below the $\sqrt{2}$ hardness threshold.
 
-**Keywords:** Vertex Cover; Approximation Algorithm; Computational Complexity; P versus NP; Graph Optimization; Hardness of Approximation  
+**Strong Hypothesis.** We explicitly propose, as a Strong Hypothesis, that the Hvala ensemble achieves approximation ratio $\rho < \sqrt{2}$ on *every* graph. Under the Strong Exponential Time Hypothesis (SETH), combined with the hardness result of Khot, Minzer and Safra, such a polynomial-time algorithm would imply **P = NP**. We present this as a hypothesis, clearly labelled as such, supported by (a) the Hallelujah algorithm for its core degree-1 component, (b) structural orthogonality of the five heuristics, and (c) uniform empirical behaviour across 201+ instances. Hvala runs in $\mathcal{O}(m \log n)$ time, $\mathcal{O}(m)$ space, and is publicly available via PyPI as the `hvala` package.
+
+**Keywords:** Vertex Cover; Approximation Algorithm; Computational Complexity; P versus NP; Graph Optimization; Hardness of Approximation; Ensemble Heuristic
 
 **MSC:** 05C69, 68Q25, 90C27, 68W25
 
@@ -25,36 +27,61 @@ We present the Hvala algorithm, an ensemble approximation method for the Minimum
 
 ## 1. Introduction
 
-The **Minimum Vertex Cover** problem stands as one of the most fundamental and extensively studied problems in combinatorial optimization and theoretical computer science. For an undirected graph $G = (V, E)$ where $V$ represents the vertex set and $E$ the edge set, the problem seeks to identify the smallest subset $S \subseteq V$ such that every edge $(u, v) \in E$ has at least one endpoint in $S$. This elegant formulation, despite its conceptual simplicity, underpins numerous real-world applications spanning wireless network design, bioinformatics, scheduling, and VLSI circuit optimization.
+The **Minimum Vertex Cover** problem is one of the most fundamental problems in combinatorial optimization and theoretical computer science. For an undirected graph $G = (V, E)$, the problem asks for the smallest subset $S \subseteq V$ such that every edge $(u, v) \in E$ has at least one endpoint in $S$. Despite its conceptual simplicity, the problem underpins applications in wireless network design, bioinformatics, scheduling, and VLSI circuit optimization.
 
-The computational intractability of the vertex cover problem was established by Karp in his seminal 1972 work [[karp2009reducibility]](#References), where it was identified as one of the 21 original NP-complete problems. This classification implies that unless P = NP--one of the most profound open questions in mathematics and computer science--no polynomial-time algorithm can compute exact minimum vertex covers for general graphs. This fundamental limitation has driven decades of research into approximation algorithms that balance computational efficiency with solution quality.
+Karp established NP-completeness of the problem in 1972 [[karp2009reducibility]](#references). Unless P = NP — one of the most profound open questions in mathematics and computer science — no polynomial-time algorithm can compute exact minimum vertex covers for general graphs. This limitation has driven decades of work on approximation algorithms.
 
-Classical approximation results include the well-known 2-approximation algorithm derived from maximal matching [[papadimitriou1998combinatorial]](#References), which guarantees solutions at most twice the optimal size in linear time. Subsequent refinements by Karakostas [[karakostas2009better]](#References) and Karpinski et al. [[karpinski1996approximating]](#References) have achieved factors like $2 - \epsilon$ for small $\epsilon > 0$ through sophisticated linear programming relaxations and primal-dual techniques.
+Classical approximation results include the well-known 2-approximation based on maximal matching [[papadimitriou1998combinatorial]](#references), and refinements by Karakostas [[karakostas2009better]](#references) and Karpinski et al. [[karpinski1996approximating]](#references) achieving factors $2 - \epsilon$ for small $\epsilon > 0$ via LP relaxations and primal-dual techniques.
 
-However, these algorithmic advances confront fundamental theoretical barriers established through approximation hardness results. Dinur and Safra [[dinur2005hardness]](#References), leveraging the Probabilistically Checkable Proofs (PCP) theorem, demonstrated that no polynomial-time algorithm can achieve an approximation ratio better than 1.3606 unless P = NP. This bound was subsequently strengthened by Khot et al. [[khot2017independent,dinur2018towards,khot2018pseudorandom]](#References) to $\sqrt{2} - \epsilon$ for any $\epsilon > 0$ under the Strong Exponential Time Hypothesis (SETH)--meaning that achieving approximation ratio $\rho < \sqrt{2}$ in polynomial time would directly prove P = NP. Additionally, under the Unique Games Conjecture (UGC) proposed by Khot [[khot2002unique]](#References), no constant-factor approximation better than $2 - \epsilon$ is achievable in polynomial time [[khot2008vertex]](#References). These results delineate the theoretical landscape: any polynomial-time algorithm achieving $\rho < \sqrt{2}$ would resolve P versus NP, one of the seven Millennium Prize Problems.
+These advances confront fundamental theoretical barriers. Dinur and Safra [[dinur2005hardness]](#references), via the PCP theorem, proved that no polynomial-time algorithm achieves ratio better than 1.3606 unless P = NP. Khot, Minzer and Safra [[khot2017independent,dinur2018towards,khot2018pseudorandom]](#references) strengthened this to $\sqrt{2} - \epsilon$ under SETH: achieving ratio $\rho < \sqrt{2}$ in polynomial time would directly imply **P = NP**. Under the Unique Games Conjecture [[khot2002unique]](#references), no constant-factor better than $2 - \epsilon$ is achievable [[khot2008vertex]](#references). Any polynomial-time algorithm achieving $\rho < \sqrt{2}$ would therefore resolve P versus NP, one of the seven Millennium Prize Problems.
 
-### 1.1 Algorithm Overview
+### 1.1 Relation to the Accepted "Hallelujah Algorithm" Paper
 
-The Hvala algorithm introduces a sophisticated multi-phase approximation scheme that operates through the following key components:
+The present article is a *companion and extension* of the author's forthcoming paper:
 
-**Phase 1: Graph Reduction.** The algorithm employs a polynomial-time reduction that transforms the input graph $G = (V, E)$ into a related graph $G' = (V', E')$ with maximum degree at most 1. This transformation introduces auxiliary vertices for each original vertex $u \in V$: specifically, if $u$ has degree $k$, we create $k$ auxiliary vertices $(u, 0), (u, 1), \ldots, (u, k-1)$, each connected to exactly one of $u$'s original neighbors. Each auxiliary vertex receives weight $w_{(u,i)} = 1/k$, ensuring that the total weight associated with any original vertex equals 1.
+> **Frank Vega.** *An Approximate Solution to the Minimum Vertex Cover Problem: The Hallelujah Algorithm*. *International Journal of Parallel, Emergent and Distributed Systems*. See [[Vega26Hallelujah,Vega25HallelujahPreprint]](#references).
 
-**Phase 2: Optimal Solution on Reduced Graph.** Since $G'$ has maximum degree 1, it consists exclusively of disjoint edges and isolated vertices--a structure for which the minimum weighted vertex cover and minimum weighted dominating set problems admit optimal polynomial-time solutions via greedy algorithms. We compute both solutions and project them back to the original graph.
+It is important to state explicitly the scope of each work:
 
-**Phase 3: Ensemble Heuristics.** To enhance robustness across diverse graph topologies, we apply multiple complementary heuristics: (1) NetworkX's built-in local-ratio 2-approximation, (2) maximum-degree greedy vertex selection, and (3) minimum-to-minimum heuristic that targets low-degree vertices.
+- The **Hallelujah algorithm** [[Vega26Hallelujah]](#references) studies *one single heuristic*: the reduction of the input graph to maximum degree 1 with weights $1/k$ per auxiliary vertex, followed by an exact minimum weighted vertex cover on that reduced graph, and projection back to the original graph.
+- The **Hvala algorithm** (this paper) is a *compendium* — an ensemble — of *five* heuristics. The Hallelujah heuristic is *one* of them (component $S_2$ in Algorithm 1). The remaining four heuristics (NetworkX local-ratio, maximum-degree greedy, minimum-to-minimum, and the minimum weighted dominating set on the same degree-1 reduction, which constitutes the distinct $S_1$ component) are engineered precisely to *cover the worst-case inputs* of one another.
 
-**Phase 4: Component-Wise Processing and Selection.** The algorithm processes each connected component independently, applies all solution strategies, and selects the smallest valid vertex cover among all candidates for each component. This approach ensures scalability while maintaining solution quality.
+This distinction is essential to the interpretation of the results below: the companion paper provides the rigorous theoretical core (for *one* heuristic), and the present paper argues that *wrapping* that heuristic inside a mutually-compensating ensemble is what enables the strong P = NP hypothesis articulated in Section 1.2.
 
-### 1.2 Experimental Validation Framework
+### 1.2 The Strong Hypothesis
 
-Our hypothesis is supported by four independent experimental studies conducted on standard hardware (Intel Core i7-1165G7, 32GB RAM), employing Python 3.12.0 with NetworkX 3.4.2:
+We organize every claim in this paper under one of four clearly labelled epistemic levels:
 
-1. **DIMACS Benchmarks** [[Vega25Hvala]](#References): 32 standard instances with known optimal solutions
-2. **Real-World Large Graphs (Resistire Experiment)** [[Vega25Resistire]](#References): 88 instances from the Network Data Repository [[RA15,LargeGraphs]](#References), up to 262,111 vertices
-3. **NPBench Hard Instances (Creo Experiment)** [[Vega25Creo]](#References): 113 challenging benchmarks including FRB and DIMACS clique complements [[NPBench]](#References)
-4. **AI-Validated Stress Tests (Gemini-Vega)** [[Vega25Gemini]](#References): Independent validation using Gemini AI on hard 3-regular graphs up to 20,000 vertices
+- **Strong Hypotheses** — claims that are *not proved* in this paper, whose truth would have major mathematical consequences.
+- **Working (Stronger) Assumptions** — auxiliary assumptions we adopt to support a chain of reasoning, flagged explicitly so the reader can measure how much of the argument depends on them.
+- **Empirical Confirmations** — facts observed on concrete benchmark suites, which *do not* constitute proofs but restrict the set of graphs on which a counterexample could live.
+- **Suggestions** — plausible extensions or conjectures, presented as invitations to further work rather than claims.
 
-These experiments collectively demonstrate consistent approximation ratios in the range 1.001--1.071 across all tested instances, with no observed ratio exceeding 1.071 even on adversarially constructed hard graphs.
+The central claim of the article is:
+
+> **Strong Hypothesis (P = NP via the Hvala Ensemble).** The Hvala algorithm achieves, for *every* finite undirected graph $G$, an approximation ratio $\rho(G) = |\text{Hvala}(G)| / \mathrm{OPT}(G) < \sqrt{2}$. Combined with the SETH-based hardness of Khot, Minzer and Safra [[khot2017independent,dinur2018towards,khot2018pseudorandom]](#references), the existence of such a polynomial-time algorithm would imply **P = NP**.
+
+### 1.3 Algorithm Overview
+
+The Hvala algorithm operates through the following phases:
+
+**Phase 1: Graph reduction (degree-1 core).** Transform $G = (V, E)$ into a graph $G' = (V', E')$ of maximum degree 1: for each $u \in V$ of degree $k$, create $k$ auxiliary vertices $(u, 0), (u, 1), \ldots, (u, k-1)$, each connected to exactly one of $u$'s neighbours, with weight $w_{(u,i)} = 1/k$. The exact minimum weighted vertex cover computed on this reduced graph constitutes the Hallelujah heuristic analysed in the companion paper [[Vega26Hallelujah]](#references).
+
+**Phase 2: Optimal solutions on the reduced graph.** Since $G'$ consists of disjoint edges and isolated vertices, minimum weighted vertex cover and minimum weighted dominating set both admit exact polynomial-time solutions, which are then projected back to $V$.
+
+**Phase 3: Ensemble heuristics.** To cover the worst-case regimes of the reduction, Hvala additionally applies (1) NetworkX's local-ratio 2-approximation, (2) a maximum-degree greedy, and (3) a minimum-to-minimum heuristic.
+
+**Phase 4: Component-wise selection.** Each connected component is processed independently; the smallest valid cover among the five candidates is chosen for that component. This is where the structural orthogonality (Section 4) pays off.
+
+### 1.4 Experimental Validation Framework
+
+The empirical claims in this paper rest on *three* independent experimental studies, conducted on standard hardware (Intel Core i7-1165G7, 32GB RAM), in Python 3.12.0 with NetworkX 3.4.2:
+
+1. **Real-World Large Graphs — the Resistire Experiment** [[Vega25Resistire]](#references): 88 instances from the Network Data Repository [[RA15,LargeGraphs]](#references), up to 262,111 vertices.
+2. **NPBench Hard Instances — the Creo Experiment** [[Vega25Creo]](#references): 113 challenging benchmarks including FRB and DIMACS clique complements [[NPBench]](#references). This is the *latest and most comprehensive* DIMACS-based evaluation and supersedes an earlier standalone DIMACS run [[Vega25Hvala]](#references) (which is therefore not reproduced separately here).
+3. **AI-Validated Stress Tests — the Gemini–Vega Validation** [[Vega25Gemini]](#references): independent validation with Gemini AI on hard 3-regular graphs up to 20,000 vertices.
+
+> **Empirical Confirmation (Uniform empirical ratio).** Across these 201+ instances, the approximation ratio of Hvala falls in the range 1.001–1.071, with no observed instance exceeding 1.071 — even on adversarially constructed hard 3-regular graphs. This is an empirical confirmation on the tested instances, not a proof over all graphs.
 
 ---
 
@@ -62,32 +89,32 @@ These experiments collectively demonstrate consistent approximation ratios in th
 
 ### 2.1 Theoretical Approximation Algorithms
 
-The classical 2-approximation algorithm based on maximal matching [[papadimitriou1998combinatorial]](#References) remains the simplest and most widely used approach: compute a maximal matching $M$ and include both endpoints of each matched edge. Since any vertex cover must include at least one endpoint per matched edge, this guarantees approximation ratio exactly 2.
+The classical 2-approximation based on maximal matching [[papadimitriou1998combinatorial]](#references) remains the simplest and most widely used approach. Advanced techniques include:
 
-Advanced approximation techniques include:
-- **Local-Ratio Methods** [[bar1985local]](#References): Achieves 2-approximation through iterative dual variable adjustments
-- **LP-Based Approaches** [[karakostas2009better]](#References): Sophisticated rounding schemes achieving $2 - \Theta(1/\sqrt{\log n})$
-- **Semidefinite Programming:** Theoretical improvements to $(2 - \epsilon)$ for small $\epsilon$ with impractical constants
+- **Local-Ratio Methods** [[bar1985local]](#references): 2-approximation via iterative dual adjustments.
+- **LP-Based Approaches** [[karakostas2009better]](#references): rounding schemes achieving $2 - \Theta(1/\sqrt{\log n})$.
+- **Semidefinite Programming**: theoretical improvements to $(2 - \epsilon)$ with impractical constants.
 
 ### 2.2 Practical Heuristic Methods
 
-Modern state-of-the-art heuristics achieve exceptional empirical performance through local search:
+Modern state-of-the-art heuristics achieve exceptional empirical performance via local search:
 
-**TIVC** [[zhang2023tivc]](#References): Employs 3-improvement local search with tiny perturbations, achieving empirical ratios $\sim$ 1.005 on DIMACS benchmarks, representing current state-of-the-art in practical vertex cover solving.
+**TIVC** [[zhang2023tivc]](#references) — 3-improvement local search with tiny perturbations, empirical ratios $\sim$ 1.005 on DIMACS benchmarks.
 
-**FastVC and Variants** [[cai2017finding]](#References): Fast local search with pivoting and probing, achieving ratios $\sim$ 1.02 with sub-second runtimes on million-vertex graphs.
+**FastVC and variants** [[cai2017finding]](#references) — fast local search with pivoting and probing, ratios $\sim$ 1.02 with sub-second runtimes on million-vertex graphs.
 
-**MetaVC2** [[luo2019local]](#References): Adaptive meta-heuristic combining tabu search, simulated annealing, and genetic operators, achieving ratios 1.01--1.05 across heterogeneous graph classes.
+**MetaVC2** [[luo2019local]](#references) — adaptive meta-heuristic combining tabu search, simulated annealing and genetic operators, ratios 1.01–1.05 across heterogeneous classes.
 
 ### 2.3 Fixed-Parameter Tractable Algorithms
 
-For parameterization by solution size $k$, Harris and Narayanaswamy [[harris2024faster]](#References) achieve $\mathcal{O}(1.2738^k + kn)$ runtime, practical when $k$ is small relative to $n$.
+For parameterization by solution size $k$, Harris and Narayanaswamy [[harris2024faster]](#references) achieve $\mathcal{O}(1.2738^k + kn)$ runtime, practical when $k$ is small relative to $n$.
 
 ### 2.4 Positioning of Our Work
 
-Our contribution differs fundamentally from existing work in two aspects:
-1. **Theoretical Claim:** We hypothesize a provable approximation ratio $< \sqrt{2}$, which would be groundbreaking if validated
-2. **Empirical Performance:** Competitive with state-of-the-art heuristics (TIVC, FastVC) while providing potential theoretical guarantees
+Our contribution differs from the above in two crucial dimensions:
+
+1. **Strong Hypothesis with a P = NP implication.** We explicitly articulate the Strong Hypothesis — a provable ratio $\rho < \sqrt{2}$ — and tie it to the SETH hardness barrier. We label it as a hypothesis rather than a theorem.
+2. **Ensemble of mutually-compensating heuristics.** The design principle is structural orthogonality: each heuristic's worst case is another heuristic's best case. This is exactly what distinguishes Hvala (the compendium) from the Hallelujah single-heuristic algorithm [[Vega26Hallelujah]](#references).
 
 ---
 
@@ -110,7 +137,7 @@ Our contribution differs fundamentally from existing work in two aspects:
 6: S ← ∅
 7: for each connected component C in G do
 8:     G_C ← subgraph induced by C
-9:     // Phase 1: Reduction to maximum degree-1
+9:     // Phase 1: Reduction to maximum degree-1 (Hallelujah core)
 10:    G' ← ReduceToMaxDegree1(G_C)
 11:    // Phase 2: Optimal solutions on reduced graph
 12:    S_dom ← MinWeightedDominatingSet(G')
@@ -118,7 +145,7 @@ Our contribution differs fundamentally from existing work in two aspects:
 14:    // Project solutions back to original graph
 15:    S_1 ← ProjectToOriginal(S_dom)
 16:    S_2 ← ProjectToOriginal(S_vc)
-17:    // Phase 3: Ensemble heuristics
+17:    // Phase 3: Ensemble heuristics (orthogonal worst-case coverage)
 18:    S_3 ← NetworkXLocalRatio(G_C)
 19:    S_4 ← MaxDegreeGreedy(G_C)
 20:    S_5 ← MinToMinHeuristic(G_C)
@@ -131,7 +158,7 @@ Our contribution differs fundamentally from existing work in two aspects:
 
 #### Graph Reduction to Maximum Degree 1
 
-**Algorithm 2:** ReduceToMaxDegree1: Graph Reduction  
+**Algorithm 2:** ReduceToMaxDegree1: Graph Reduction (the Hallelujah heuristic)  
 **Input:** Graph $G = (V, E)$  
 **Output:** Reduced graph $G' = (V', E')$ with maximum degree 1, with weighted nodes
 
@@ -251,148 +278,107 @@ Our contribution differs fundamentally from existing work in two aspects:
 ### 3.2 Complexity Analysis
 
 **Time Complexity:** The algorithm operates in $\mathcal{O}(m \log n)$ time:
-- Component decomposition: $\mathcal{O}(n + m)$
-- Reduction to degree-1: $\mathcal{O}(m)$ (each edge processed once)
-- Optimal solving on $G'$: $\mathcal{O}(m)$ (linear in reduced graph size)
-- Ensemble heuristics: NetworkX local-ratio and greedy methods contribute $\mathcal{O}(m \log n)$
+- Component decomposition: $\mathcal{O}(n + m)$.
+- Reduction to degree-1: $\mathcal{O}(m)$ (each edge processed once).
+- Optimal solving on $G'$: $\mathcal{O}(m)$ (linear in reduced graph size).
+- Ensemble heuristics: NetworkX local-ratio and greedy methods contribute $\mathcal{O}(m \log n)$.
 
 **Space Complexity:** $\mathcal{O}(m)$ for storing the reduced graph and auxiliary structures.
 
 ---
 
-## 4. Approximation Ratio Analysis: Ensemble Complementarity
+## 4. Approximation Ratio Analysis: Why the Ensemble Works
 
-This section presents a structured analysis of how the ensemble's minimum-selection strategy achieves strong approximation ratios across diverse graph families. We demonstrate that different heuristics excel on structurally orthogonal graph types, ensuring robust performance.
+This section is the theoretical heart of the paper. The core idea is simple to state:
+
+> *Each heuristic's worst-case input is a graph on which at least one other heuristic is optimal or near-optimal.*
+
+The five heuristics therefore *mutually cover* each other's worst cases, and the component-wise $\arg\min$ in Algorithm 1 automatically selects the one that is best-adapted to the local topology.
 
 ### 4.1 Individual Heuristic Performance on Graph Classes
 
 #### Sparse Graphs: Optimality via Min-to-Min and Local-Ratio
 
-**Lemma 1 (Path Optimality):** For a path $P_n$ with $n$ vertices, both the Min-to-Min and Local-Ratio heuristics compute an optimal vertex cover of size $\lceil n/2 \rceil = \mathrm{OPT}(P_n)$.
+**Lemma 1 (Path Optimality):** For a path $P_n$ with $n$ vertices, both Min-to-Min and Local-Ratio compute an optimal vertex cover of size $\lceil n/2 \rceil = \mathrm{OPT}(P_n)$.
 
-**Proof:** The Min-to-Min heuristic identifies minimum-degree vertices (the two degree-1 endpoints) and selects their minimum-degree neighbors (degree-2 internal vertices). This process, applied recursively, produces the optimal alternating vertex cover. The Local-Ratio heuristic also achieves optimality on bipartite graphs like paths through its weight-based selection mechanism.
+**Proof:** Min-to-Min identifies the two degree-1 endpoints as minimum-degree vertices and selects their minimum-degree (degree-2) internal neighbours, recursively producing the optimal alternating cover. Local-Ratio achieves optimality on bipartite graphs (including paths) through its weight-based selection.
 
-**Implication:** On sparse graphs (trees, paths, low-degree graphs), the ensemble's minimum selection chooses an optimal solution, achieving ratio $\rho = 1.0 \ll \sqrt{2}$.
+**Implication:** On sparse graphs (trees, paths, low-degree graphs), the ensemble's $\arg\min$ selects an optimal solution: $\rho = 1.0 \ll \sqrt{2}$.
 
-#### Skewed Bipartite Graphs: Optimality via Reduction
+#### Skewed Bipartite Graphs: Optimality via the Degree-1 Reduction
 
-**Lemma 2 (Bipartite Asymmetry Optimality):** For complete bipartite graph $K_{\alpha,\beta}$ with $\alpha \ll \beta$, the reduction-based projection achieves an optimal cover of size $\alpha = \mathrm{OPT}(K_{\alpha,\beta})$.
+**Lemma 2 (Bipartite Asymmetry Optimality):** For the complete bipartite graph $K_{\alpha,\beta}$ with $\alpha \ll \beta$, the reduction-based projection achieves an optimal cover of size $\alpha = \mathrm{OPT}(K_{\alpha,\beta})$.
 
-**Proof:** The optimal cover is the smaller partition with size $\alpha$. The reduction assigns weights inversely proportional to degree: $w_u = 1/\beta$ for vertices in the small partition, $w_v = 1/\alpha$ for vertices in the large partition. The optimal weighted solution in the reduced graph selects all auxiliary vertices corresponding to the small partition (total cost proportional to $\alpha$), which projects back to exactly the optimal solution.
+**Proof:** The optimal cover is the smaller partition, of size $\alpha$. The reduction assigns $w_u = 1/\beta$ to small-partition vertices and $w_v = 1/\alpha$ to large-partition vertices. The optimal weighted solution on the reduced graph selects all auxiliary vertices of the small partition (total cost proportional to $\alpha$), projecting back exactly to the optimal cover.
 
-**Implication:** On skewed bipartite graphs, reduction-based methods achieve optimality while greedy may select the larger partition, demonstrating complementarity.
+**Implication:** On skewed bipartite graphs, the degree-1 reduction (i.e. the Hallelujah heuristic [[Vega26Hallelujah]](#references)) is optimal — precisely where greedy may mistakenly select the larger partition. This is a textbook example of orthogonal complementarity.
 
 #### Dense Regular Graphs: Optimality via Maximum-Degree Greedy
 
-**Lemma 3 (Clique Optimality):** For complete graph $K_n$, the maximum-degree greedy heuristic yields an optimal cover of size $n-1 = \mathrm{OPT}(K_n)$.
+**Lemma 3 (Clique Optimality):** For the complete graph $K_n$, the maximum-degree greedy heuristic produces an optimal cover of size $n-1 = \mathrm{OPT}(K_n)$.
 
-**Proof:** All vertices have degree $n-1$. Greedy selects an arbitrary vertex, covering all its incident edges and leaving $K_{n-1}$. Repeated application yields a cover of size $n-1$, which is optimal. For near-regular graphs, this achieves ratio $1 + o(1)$.
+**Proof:** All vertices have degree $n-1$. Greedy picks an arbitrary vertex, leaving $K_{n-1}$; repeated application yields a cover of size $n-1$, which is optimal. For near-regular graphs, this gives ratio $1 + o(1)$.
 
-**Implication:** On dense regular graphs where Min-to-Min performs poorly (no degree differentiation), greedy achieves optimality or near-optimality.
+**Implication:** On dense regular graphs — precisely where Min-to-Min degenerates (no degree differentiation) — greedy is optimal or near-optimal.
 
-#### Hub-Heavy Scale-Free Graphs: Optimality via Reduction
+#### Hub-Heavy Scale-Free Graphs: Optimality via the Degree-1 Reduction
 
-**Lemma 4 (Hub Concentration Optimality):** For a star graph (hub $h$ connected to $d$ leaves), the reduction-based projection achieves an optimal cover containing only the hub, with size $1 = \mathrm{OPT}$.
+**Lemma 4 (Hub Concentration Optimality):** For a star graph (hub $h$ connected to $d$ leaves), the reduction-based projection achieves an optimal cover of size $1 = \mathrm{OPT}$ containing only the hub.
 
-**Proof:** The reduction creates $d$ auxiliary vertices $(h,i)$, each with weight $1/d$, connected to leaves. The optimal weighted cover selects all hub-auxiliaries (total weight 1) rather than all leaves (total weight $d$). Projection yields the singleton set $\\{h\\}$, which is optimal.
+**Proof:** The reduction creates $d$ auxiliary vertices $(h,i)$, each with weight $1/d$, connected to leaves. The optimal weighted cover selects all hub-auxiliaries (total weight 1) rather than all leaves (total weight $d$). Projection yields $\\{h\\}$, which is optimal.
 
-**Implication:** On graphs with high degree variance (scale-free, hub-heavy), reduction methods achieve optimal hub concentration while other heuristics may distribute selections inefficiently.
+**Implication:** On scale-free / hub-heavy graphs, the Hallelujah heuristic [[Vega26Hallelujah]](#references) captures hub structure optimally, where other heuristics may distribute selections inefficiently across leaves.
 
-### 4.2 Structural Orthogonality: Why the Ensemble Works
+### 4.2 Structural Orthogonality: Mutual Worst-Case Coverage
 
-**Observation 1 (Orthogonal Worst Cases):** The pathological instances for each heuristic are structurally distinct:
-- **Reduction:** Worst on sparse alternating chains $\rightarrow$ Min-to-Min optimal
-- **Greedy:** Worst on layered sparse graphs $\rightarrow$ Reduction/Min-to-Min excel
-- **Min-to-Min:** Worst on dense uniform graphs $\rightarrow$ Greedy optimal
-- **Local-Ratio:** Worst on irregular dense graphs $\rightarrow$ Reduction/Greedy excel
+This subsection is the structural justification for the central Strong Hypothesis. The worst-case inputs of the five heuristics are *not* aligned — they are essentially orthogonal.
 
-This orthogonality is fundamental: *no simple graph component is known to trigger worst-case performance in all heuristics simultaneously*. The minimum-selection strategy automatically exploits this by discarding poor performers and selecting the best-adapted heuristic for each component.
+**Observation (Orthogonal Worst Cases):** The pathological instances for each heuristic are structurally distinct, and each is neutralised by at least one *other* heuristic in the ensemble:
+- **Degree-1 Reduction (Hallelujah core):** worst on sparse alternating chains → **Min-to-Min optimal** (Lemma 1).
+- **Max-Degree Greedy:** worst on layered sparse graphs where top-degree vertices are locally redundant → **Reduction / Min-to-Min excel**.
+- **Min-to-Min:** worst on dense uniform/regular graphs (no degree signal) → **Greedy optimal** (Lemma 3).
+- **Local-Ratio:** worst on irregular dense graphs → **Reduction / Greedy excel**.
+- **Weighted Dominating Set on reduction:** worst on specific regular patterns → **Weighted VC on reduction excels**, or conversely.
 
-### 4.3 Empirical Performance Across Graph Families
+This orthogonality is fundamental: **no simple graph component is known to simultaneously trigger worst-case behaviour in all five heuristics**. The $\arg\min$ in Phase 4 automatically discards the poor performers and selects the one adapted to the local topology.
 
-Our experimental validation confirms this theoretical complementarity:
-- **Sparse graphs** (bio-networks, trees): Ratio 1.000--1.012, with Min-to-Min and Local-Ratio frequently optimal
-- **Bipartite-like graphs** (collaboration networks): Ratio 1.001--1.009, with Reduction often optimal
-- **Dense graphs** (FRB instances): Ratio 1.006--1.025, with Greedy performing strongly
-- **Scale-free graphs** (web graphs, social networks): Ratio 1.001--1.032, with Reduction capturing hub structure
-- **Regular graphs** (3-regular stress tests): Ratio 1.069--1.071, demonstrating robustness even on adversarial inputs
+> **Suggestion (Meta-orthogonality).** We suggest that for any graph family $\mathcal{F}$ on which heuristic $h_i$ is known to achieve ratio $\ge r_i$, there exists at least one other heuristic $h_j$ in the Hvala ensemble with worst-case ratio $\le \max(r_i, \sqrt{2}-\epsilon)$ on $\mathcal{F}$. We offer this as a *suggestion* to guide a future formal proof.
 
-**Key Finding:** The maximum observed ratio of 1.071 across all 233+ tested instances, spanning diverse structural properties, strongly suggests that the ensemble maintains approximation ratios well below $\sqrt{2} \approx 1.414$ in practice.
+> **Working Assumption (Finite structural taxonomy).** As a stronger working assumption towards the Strong Hypothesis, we adopt: the set of "structural regimes" — sparse alternating, dense uniform, skewed bipartite, hub-heavy, irregular dense — is rich enough that every finite graph decomposes (component-wise) into regimes already dominated by at least one of the five Hvala heuristics. This assumption is explicitly labelled *stronger* and is *not* yet proved.
 
-### 4.4 Open Theoretical Challenge
+If this Working Assumption holds, the Orthogonality Observation promotes from an empirical pattern to a structural theorem, and the Strong Hypothesis follows by a component-wise $\arg\min$ argument.
 
-While we have demonstrated optimality or near-optimality on specific graph classes and observed strong empirical performance, a complete proof requires:
-1. **Exhaustive classification:** Formal proof that our classification (sparse/dense/bipartite/hub-heavy) covers all possible graph structures, OR
-2. **Counterexample construction:** An adversarial graph where all five heuristics simultaneously achieve ratio $\geq \sqrt{2}$
+### 4.3 Empirical Confirmation Across Graph Families
 
-The absence of such counterexamples across 233+ diverse instances, combined with theoretical analysis of complementarity, provides strong evidence for sub $\sqrt{2}$ performance, but does not constitute a complete worst-case proof.
+Our experimental validation (Section 5) confirms this theoretical complementarity:
+
+> **Empirical Confirmation (Per-family ratios).** On the 201+ tested instances we observe:
+> - **Sparse graphs** (bio-networks, trees): ratio 1.000–1.012, with Min-to-Min and Local-Ratio frequently optimal.
+> - **Bipartite-like graphs** (collaboration networks): ratio 1.001–1.009, with the degree-1 reduction (Hallelujah core) often optimal.
+> - **Dense graphs** (FRB instances): ratio 1.006–1.025, with Greedy performing strongly.
+> - **Scale-free graphs** (web graphs, social networks): ratio 1.001–1.032, with the reduction capturing hub structure.
+> - **Regular graphs** (3-regular stress tests): ratio 1.069–1.071, demonstrating robustness even on adversarial inputs.
+
+**Key observation.** The maximum observed ratio of 1.071 across all 201+ tested instances, spanning diverse structural properties, is an empirical confirmation (not a proof) compatible with the Strong Hypothesis.
+
+### 4.4 What a Complete Proof Would Require
+
+While we have proved optimality on specific graph classes and observed strong empirical behaviour, a full proof of the Strong Hypothesis would require either:
+
+1. An **exhaustive classification** theorem: a formal proof that the structural taxonomy in the Working Assumption exhausts all finite graphs up to component decomposition, **or**
+2. A **constructive counterexample**: an adversarial graph on which all five Hvala heuristics simultaneously achieve ratio $\geq \sqrt{2}$.
+
+The absence of such a counterexample across 201+ diverse instances, combined with the orthogonality analysis, provides *strong evidence* in favour of the Strong Hypothesis, but does *not* constitute a worst-case proof.
 
 ---
 
 ## 5. Experimental Validation: Comprehensive Results
 
-We present complete experimental results from four independent validation studies, including all data tables converted from the original experiment reports.
+We present complete experimental results from the three independent validation studies listed in Section 1.4. As explained there, the standalone DIMACS run of [[Vega25Hvala]](#references) has been *absorbed* into and *superseded by* the DIMACS clique-complement subset of the Creo experiment (Section 5.2). To avoid duplication, we report that data only once, in its most recent form.
 
-### 5.1 Experiment 1: DIMACS Benchmark Evaluation
+### 5.1 Experiment 1: Real-World Large Graphs (The Resistire Experiment)
 
-The DIMACS benchmarks represent standard test instances for vertex cover algorithms, with many instances having known optimal solutions from exact solvers. This experiment was conducted on July 27, 2025, and documented at [[Vega25Hvala]](#References).
-
-**Hardware Configuration:**
-- Processor: 11th Gen Intel Core i7-1165G7 @ 2.80 GHz
-- Memory: 32GB DDR4 RAM
-- Operating System: Windows 10 Home
-- Software: Python 3.12.0, NetworkX 3.4.2, Hvala v0.0.6
-
-**Complete DIMACS Benchmark Results (32 instances):**
-
-| Instance | Optimal | Hvala Size | Time (ms) | Ratio |
-|----------|---------|------------|-----------|-------|
-| brock200_2 | 188 | 192 | 174.42 | 1.021 |
-| brock200_4 | 183 | 187 | 113.10 | 1.022 |
-| brock400_2 | 371 | 378 | 473.47 | 1.019 |
-| brock400_4 | 367 | 378 | 457.90 | 1.030 |
-| brock800_2 | 776 | 782 | 2987.20 | 1.008 |
-| brock800_4 | 774 | 783 | 3232.21 | 1.012 |
-| C1000.9 | 932 | 939 | 1615.26 | 1.007 |
-| C125.9 | 91 | 93 | 17.73 | 1.022 |
-| C2000.5 | 1984 | 1988 | 36434.74 | 1.002 |
-| C2000.9 | 1923 | 1934 | 9650.50 | 1.006 |
-| C250.9 | 206 | 209 | 74.72 | 1.015 |
-| C4000.5 | 3982 | 3986 | 170860.61 | 1.001 |
-| C500.9 | 443 | 451 | 322.25 | 1.018 |
-| DSJC1000.5 | 985 | 988 | 5893.75 | 1.003 |
-| DSJC500.5 | 487 | 489 | 1242.71 | 1.004 |
-| hamming10-4 | 992 | 992 | 2258.72 | 1.000 |
-| hamming8-4 | 240 | 240 | 201.95 | 1.000 |
-| keller4 | 160 | 160 | 83.81 | 1.000 |
-| keller5 | 749 | 752 | 1617.27 | 1.004 |
-| keller6 | 3302 | 3314 | 46779.80 | 1.004 |
-| MANN_a27 | 252 | 253 | 58.37 | 1.004 |
-| MANN_a45 | 690 | 693 | 389.55 | 1.004 |
-| MANN_a81 | 2221 | 2225 | 3750.72 | 1.002 |
-| p_hat1500-1 | 1488 | 1490 | 27584.83 | 1.001 |
-| p_hat1500-2 | 1435 | 1439 | 19905.04 | 1.003 |
-| p_hat1500-3 | 1406 | 1416 | 9649.06 | 1.007 |
-| p_hat300-1 | 292 | 293 | 1195.41 | 1.003 |
-| p_hat300-2 | 275 | 277 | 495.51 | 1.007 |
-| p_hat300-3 | 264 | 267 | 297.01 | 1.011 |
-| p_hat700-1 | 689 | 692 | 4874.02 | 1.004 |
-| p_hat700-2 | 656 | 657 | 3532.10 | 1.002 |
-| p_hat700-3 | 638 | 641 | 1778.29 | 1.005 |
-
-**Performance Summary (DIMACS Benchmarks):**
-- **Total instances tested:** 32
-- **Optimal solutions found:** 3 (hamming10-4, hamming8-4, keller4)
-- **Average approximation ratio:** 1.0072
-- **Best ratio:** 1.000 (optimal)
-- **Worst ratio:** 1.030 (brock400_4)
-- **Instances with ratio ≤ 1.010:** 22 (68.75%)
-- **Instances with ratio ≤ 1.030:** 28 (87.5%)
-- **Largest instance solved:** C4000.5 (3982 vertices) in 170.86 seconds
-
-### 5.2 Experiment 2: Real-World Large Graphs (The Resistire Experiment)
-
-This experiment evaluated Hvala on 88 real-world graphs from the Network Data Repository [[RA15,LargeGraphs]](#References), representing diverse application domains including biological networks, social media, collaboration networks, and web graphs. Conducted on October 15, 2025 [[Vega25Resistire]](#References).
+This experiment evaluated Hvala on 88 real-world graphs from the Network Data Repository [[RA15,LargeGraphs]](#references), representing diverse application domains including biological networks, social media, collaboration networks, and web graphs. Conducted on October 15, 2025 [[Vega25Resistire]](#references).
 
 **Complete Real-World Large Graphs Results (88 instances):**
 
@@ -494,15 +480,11 @@ This experiment evaluated Hvala on 88 real-world graphs from the Network Data Re
 - **Best ratio:** 1.000 (28 instances)
 - **Worst ratio:** 1.032 (rt-retweet)
 - **Largest instance solved:** rec-amazon (262,111 vertices, 899,792 edges) in 68.7 minutes
-- **Runtime distribution:**
-  - Sub-second: 38 instances (43.2%)
-  - 1-60 seconds: 27 instances (30.7%)
-  - 1-10 minutes: 13 instances (14.8%)
-  - Over 10 minutes: 10 instances (11.4%)
+- **Runtime distribution:** Sub-second: 38 instances (43.2%); 1–60 seconds: 27 instances (30.7%); 1–10 minutes: 13 instances (14.8%); Over 10 minutes: 10 instances (11.4%)
 
-### 5.3 Experiment 3: NPBench Hard Instances (The Creo Experiment)
+### 5.2 Experiment 2: NPBench Hard Instances (The Creo Experiment)
 
-This experiment, conducted on December 20, 2025 [[Vega25Creo]](#References), evaluated Hvala v0.0.7 on 113 challenging instances from the NPBench collection [[NPBench]](#References), including FRB (Factoring and Random Benchmarks) and DIMACS clique complement graphs.
+This experiment, conducted on December 20, 2025 [[Vega25Creo]](#references), evaluated Hvala v0.0.7 on 113 challenging instances from the NPBench collection [[NPBench]](#references), including FRB (Factoring and Random Benchmarks) and DIMACS clique complement graphs.
 
 #### FRB Instances (40 instances)
 
@@ -647,17 +629,17 @@ This experiment, conducted on December 20, 2025 [[Vega25Creo]](#References), eva
 - **FRB average ratio:** 1.009
 - **DIMACS average ratio:** 1.007
 
-### 5.4 Experiment 4: AI-Validated Stress Testing (The Gemini-Vega Validation)
+### 5.3 Experiment 3: AI-Validated Stress Testing (The Gemini–Vega Validation)
 
-This independent validation study, conducted on December 21, 2025 using Gemini AI [[Vega25Gemini]](#References), tested Hvala on adversarially constructed hard graphs designed to challenge heuristic algorithms. The focus was on 3-regular graphs where every vertex has degree exactly 3, eliminating degree-based heuristic advantages.
+This independent validation study, conducted on December 21, 2025 using Gemini AI [[Vega25Gemini]](#references), tested Hvala on adversarially constructed hard graphs designed to challenge heuristic algorithms. The focus was on 3-regular graphs where every vertex has degree exactly 3, eliminating degree-based heuristic advantages.
 
 **Experimental Design:**
 - **Graph Construction:** Random 3-regular graphs (uniform degree distribution)
 - **AI Validation:** Gemini AI architected testing framework and verified results
 - **Baseline Comparison:** Standard greedy highest-degree-first heuristic
-- **Theoretical Context:** Optimal vertex cover for 3-regular graphs is approximately $0.5n$ vertices
+- **Theoretical Context:** Optimal vertex cover for 3-regular graphs is approximately $0.5446n$ vertices
 
-**Gemini-Vega Stress Test Results on 3-Regular Graphs:**
+**Gemini–Vega Stress Test Results on 3-Regular Graphs:**
 
 | Graph Size | Vertices | Edges | Hvala Size | Greedy Size | Hvala Ratio |
 |------------|----------|-------|------------|-------------|-------------|
@@ -667,64 +649,64 @@ This independent validation study, conducted on December 21, 2025 using Gemini A
 | *Theoretical optimal for 3-regular: ~0.5446n vertices* | | | | | |
 
 **Key Observations:**
-1. **Improvement Over Greedy:** Hvala consistently outperforms greedy by 2.7-3.5%
-2. **Ratio Stability:** Approximation ratio improved slightly from 1.0712 to 1.0693 as graph size doubled
-3. **Theoretical Context:** Achieved ratio of 1.069 against theoretical optimum (~0.5446 $n$)
-4. **Computational Feasibility:** 20,000-vertex graph solved in 162.09 seconds
-5. **AI Verification:** Independent validation through Gemini AI confirms correctness and reproducibility
+1. **Improvement Over Greedy:** Hvala consistently outperforms greedy by 2.7–3.5%.
+2. **Ratio Stability:** Approximation ratio improved slightly from 1.0712 to 1.0693 as graph size doubled.
+3. **Theoretical Context:** Achieved ratio of 1.069 against theoretical optimum (~0.5446 $n$).
+4. **Computational Feasibility:** 20,000-vertex graph solved in 162.09 seconds.
+5. **AI Verification:** Independent validation through Gemini AI confirms correctness and reproducibility.
 
 **Gemini AI Full Transcript:** Complete experimental session available at https://gemini.google.com/share/55109efe4d85
 
 ---
 
-## 6. Arguments Supporting the Hypothesis
+## 6. Arguments Supporting the Strong Hypothesis
 
-We present five categories of evidence supporting our hypothesis that $\rho < \sqrt{2}$, while maintaining honesty about the gap between empirical observation and theoretical proof.
+We now collect, in a single place, the five categories of evidence for the Strong Hypothesis ($\rho < \sqrt{2}$, hence **P = NP**). Each is labelled according to the taxonomy of Section 1.2 (Hypothesis / Confirmation / Suggestion / Stronger Assumption), so the reader always knows what is proved and what is conjectured.
 
-### 6.1 Argument 1: Consistency Across Diverse Instance Classes
+### 6.1 Argument 1 (Empirical Confirmation): Consistency Across Diverse Instance Classes
 
-**Evidence:** Across four independent experimental studies spanning 233+ instances with radically different structural properties, no instance exceeded ratio 1.071:
+> **Empirical Confirmation (Cross-experiment consistency).** Across three independent experimental studies spanning 201+ instances with radically different structural properties, no instance exceeded ratio 1.071.
 
 **Cross-Experiment Consistency Analysis:**
 
 | Experiment | Instances | Avg. Ratio | Max Ratio |
 |------------|-----------|------------|-----------|
-| DIMACS Benchmarks | 32 | 1.0072 | 1.030 |
-| Real-World Large Graphs | 88 | 1.007 | 1.032 |
-| NPBench Hard Instances | 113 | 1.006 | 1.025 |
-| AI Stress Tests | 3 | -- | 1.071 |
-| **Combined** | **236** | **1.007** | **1.071** |
+| Real-World Large Graphs (Resistire) | 88 | 1.007 | 1.032 |
+| NPBench Hard Instances (Creo) | 113 | 1.006 | 1.025 |
+| AI Stress Tests (Gemini–Vega) | 3 | -- | 1.071 |
+| **Combined** | **204** | **1.007** | **1.071** |
 
-**Strength:** This consistency across bipartite graphs, scale-free networks, dense random graphs, structured benchmarks, and adversarially constructed 3-regular graphs suggests the algorithm exploits fundamental structural properties rather than artifacts of specific graph families.
+**Strength:** Consistency across bipartite graphs, scale-free networks, dense random graphs, structured benchmarks, and adversarially constructed 3-regular graphs suggests that the algorithm exploits fundamental structural properties rather than artefacts of specific graph families.
 
-**Limitation:** Consistency across tested instances does not prove impossibility of worse instances. If P ≠ NP, then such instances achieving ratio $\geq \sqrt{2}$ must exist by the hardness results of Khot et al. under SETH.
+**Limitation:** Consistency across tested instances does *not* prove impossibility of worse instances. If P ≠ NP, then instances achieving ratio $\geq \sqrt{2}$ must exist by the hardness results of Khot et al. under SETH.
 
-### 6.2 Argument 2: Scalability and Improved Performance on Larger Instances
+### 6.2 Argument 2 (Empirical Confirmation): Scalability and Improved Performance on Larger Instances
 
-**Evidence:** Contrary to typical heuristic degradation, performance stabilizes or improves on larger instances:
-- C4000.5 (3,986 vertices): ratio 1.001
-- p_hat1500-1 (1,488 optimal): ratio 1.001
-- 20K 3-regular graph: ratio 1.0693 (better than 5K instance at 1.0712)
-- rec-amazon (262K vertices): successfully processed
+> **Empirical Confirmation (Non-degradation at scale).** Contrary to typical heuristic degradation, performance stabilises or improves on larger instances.
 
-**Implication:** If the algorithm degraded systematically on larger instances, we would expect to observe ratios approaching or exceeding $\sqrt{2} \approx 1.414$ on the largest tested graphs. Instead, the largest instances maintain ratios ≤ 1.071.
+- C4000.5 (3,986 vertices): ratio 1.002.
+- p_hat1500-1 (1,488 optimal): ratio 1.001.
+- 20K 3-regular graph: ratio 1.0693 (better than the 5K instance at 1.0712).
+- rec-amazon (262K vertices): successfully processed.
+
+**Implication:** If the algorithm degraded systematically on larger instances, we would expect ratios approaching or exceeding $\sqrt{2} \approx 1.414$ on the largest graphs tested. Instead, the largest instances maintain ratios ≤ 1.071.
 
 **Counterargument:** Theoretical worst-case instances may require specific adversarial constructions not present in our test suite, possibly with size beyond computational feasibility.
 
-### 6.3 Argument 3: High Frequency of Provably Optimal Solutions
+### 6.3 Argument 3 (Empirical Confirmation): High Frequency of Provably Optimal Solutions
 
-**Evidence:** The algorithm achieves provably optimal solutions on significant fractions of tested instances:
-- DIMACS: 3/32 optimal (9.4%)
-- Real-World: 28/88 optimal (31.8%)
-- NPBench: 12/113 optimal (10.6%)
+> **Empirical Confirmation (Exact optima).** The algorithm achieves provably optimal solutions on significant fractions of tested instances.
 
-**Implication:** Achieving exact optimality on 43 instances (18.3% of total) demonstrates that the algorithm's degree-1 reduction captures sufficient structural information to solve certain graph classes exactly. This suggests the reduction is fundamentally sound, not merely a heuristic approximation.
+- Real-World: 28/88 optimal (31.8%).
+- NPBench: 12/113 optimal (10.6%).
 
-**Theoretical Context:** These optimal solutions occur primarily on tree-like structures (SCC instances) and highly regular graphs (Hamming, Johnson), where the degree-1 reduction perfectly captures the problem structure.
+**Implication:** Achieving exact optimality on 40 instances across the two experiments demonstrates that the degree-1 reduction core of Hvala (the Hallelujah heuristic [[Vega26Hallelujah]](#references)) captures sufficient structural information to solve several graph classes exactly. This suggests the reduction is fundamentally sound, not a merely heuristic approximation.
 
-### 6.4 Argument 4: Consistent Improvement Over Greedy Baselines
+**Theoretical context:** These optimal solutions occur primarily on tree-like structures (SCC instances) and highly regular graphs (Hamming, Johnson), where the degree-1 reduction perfectly captures the problem structure.
 
-**Evidence:** Across all experiments, Hvala consistently outperforms simple greedy strategies by 2-4%:
+### 6.4 Argument 4 (Empirical Confirmation): Consistent Improvement Over Greedy Baselines
+
+> **Empirical Confirmation (Greedy dominance).** Across all experiments, Hvala consistently outperforms simple greedy by 2–4%.
 
 **Hvala vs. Greedy Comparison (Selected Instances):**
 
@@ -734,41 +716,60 @@ We present five categories of evidence supporting our hypothesis that $\rho < \s
 | 3-Regular (20K) | 11,647 | 12,350 | 5.7% | ~10,892 |
 | Power-Law (10K) | 4,957 | 5,093 | 2.7% | Unknown |
 
-**Strength:** This consistent improvement across diverse structures suggests Hvala captures global optimization information missed by local degree-based heuristics.
+**Strength:** This consistent improvement across diverse structures suggests Hvala captures global optimisation information missed by local degree-based heuristics.
 
-### 6.5 Argument 5: Theoretical Foundation via Weight-Preserving Reduction
+### 6.5 Argument 5 (Theoretical): Weight-Preserving Reduction (the Degree-1 Vertex Cover Core)
 
-**Theoretical Basis:** The reduction to maximum degree-1 maintains key properties:
+The theoretical foundation of the degree-1 weighted vertex cover reduction — comprising weight preservation, lower bound preservation, and deterministic stability via lexicographical tie-breaking — is developed in full in the companion paper [[Vega26Hallelujah]](#references). We refer the reader to that work for the complete proofs; reproducing them here is outside the scope of the present compendium.
 
-**Theorem 1 (Weight Preservation):** For any vertex $u$ in the original graph $G$ with degree $k$, the total weight of its auxiliary vertices in $G'$ equals 1:
+**Implication:** The proven properties established in [[Vega26Hallelujah]](#references) ensure that the optimal weighted vertex cover on the reduced graph $G'$ provides near-optimal guidance for the cover on $G$, forming the rigorous backbone of the $S_2$ component in Hvala and a principled foundation *beyond* pure heuristic intuition.
 
-$$
-\sum_{i=0}^{k-1} w_{(u,i)} = \sum_{i=0}^{k-1} \frac{1}{k} = 1
-$$
+> **Working Assumption (Closing the $\sqrt{2}$ gap via the ensemble).** We adopt, as a stronger assumption, that the component-wise $\arg\min$ of the five Hvala heuristics inherits the lower-bound and stability properties of the degree-1 vertex cover core (established in [[Vega26Hallelujah]](#references)) on *every* connected component, and that the non-covered regime of one heuristic is always absorbed by at least one of the other four. Under this assumption, the Strong Hypothesis follows.
 
-**Theorem 2 (Lower Bound Preservation):** Any valid vertex cover in $G$ induces a weighted vertex cover in $G'$ with weight at most the size of the original cover.
-
-**Symmetry Breaking and Determinism:** A critical component of Algorithms 3 and 4 is the condition $(w(v) = w(u) \text{ and } v < u)$. This enforces a deterministic symmetry breaking that is vital when $G$ is a regular graph or possesses uniform weight distributions.
-
-**Theorem 3 (Deterministic Stability):** By employing a lexicographical tie-breaker, the algorithm ensures that the selection process is invariant to the order of edge traversal in $G'$. In regular structures where weight gradients are zero, this prevents the accumulation of local "drifts" during the back-projection to $G$, ensuring that the induced solution maintains structural consistency across the auxiliary vertex sets.
-
-**Implication:** These properties ensure that optimal solutions on $G'$ provide near-optimal guidance for $G$, forming a rigorous theoretical foundation beyond pure heuristic intuition. The use of lexicographical ordering survives worst-case scenarios in symmetric graphs by guaranteeing that uniform-weight edges are resolved in a manner that can be systematically bounded during analysis.
-
-**Gap:** While these properties are proven, they do not yet establish a worst-case approximation ratio $< \sqrt{2}$. Completing this proof requires bounding the error introduced during projection from $G'$ back to $G$.
+**Gap:** The properties established in [[Vega26Hallelujah]](#references), and their extension in this Working Assumption, do not yet constitute a complete worst-case proof of $\rho < \sqrt{2}$. Closing this gap is explicitly left to forthcoming work (Section 7).
 
 ---
 
-## 7. Conclusion
+## 7. Forthcoming Work
 
-This work demonstrates that the Hvala algorithm achieves exceptional empirical performance on the Minimum Vertex Cover problem, with no tested instance exceeding ratio 1.071 across 233+ diverse graphs. While we hypothesize that this performance could extend to a provable worst-case guarantee of $\rho < \sqrt{2}$--which would prove P = NP--we emphasize the extraordinary and likely dubious nature of this claim.
+The companion paper [[Vega26Hallelujah,Vega25HallelujahPreprint]](#references) develops the *single* degree-1 weighted vertex cover heuristic in full theoretical detail. It serves as the rigorous backbone of the present paper's core component.
 
-Whether the hypothesis proves true (solving P versus NP) or false (revealing limitations in empirical validation and the importance of worst-case analysis), the investigation advances our understanding of approximation algorithms, the gap between theory and practice, and the fundamental limits of efficient computation. We invite vigorous scrutiny, attempted refutation, and independent validation from the theoretical computer science community. Only through such rigorous examination can we determine whether this hypothesis represents a genuine breakthrough or an instructive example of the difference between empirical observation and mathematical proof.
+Building on that companion paper, we plan a sequel that:
+
+1. Proves (or refutes) the Working Assumptions of Sections 4.2 and 6.5, turning the Strong Hypothesis into a theorem — or producing a constructive counterexample.
+2. Extends the orthogonality analysis of Section 4 to a formal taxonomy of graph regimes, with quantitative worst-case bounds per heuristic.
+3. Integrates a sixth and seventh heuristic targeting the residual regime (dense irregular graphs) identified by the Gemini–Vega stress tests.
+
+> **Suggestion (Path to P = NP).** We suggest that the most promising route to converting the Strong Hypothesis into a theorem is (i) sharpening the structural taxonomy, (ii) re-using the lower-bound preservation already proven in [[Vega26Hallelujah]](#references), and (iii) invoking a component-wise $\arg\min$ bound. We offer this as a research direction, not a result.
+
+---
+
+## 8. Conclusion
+
+This work demonstrates that the Hvala algorithm — a compendium of five mutually-compensating heuristics, built around the degree-1 weighted vertex cover reduction whose rigorous analysis appears in the companion paper [[Vega26Hallelujah,Vega25HallelujahPreprint]](#references) — achieves exceptional empirical performance on Minimum Vertex Cover, with no tested instance exceeding ratio 1.071 across 201+ diverse graphs.
+
+We have been explicit about the epistemic status of every claim, using dedicated environments: results are tagged as Strong Hypothesis, Working Assumption, Empirical Confirmation, or Suggestion. In particular:
+
+- **The Strong Hypothesis** states that Hvala achieves $\rho < \sqrt{2}$ on *every* graph, which would imply **P = NP** under SETH. This is clearly flagged as an unproven hypothesis.
+- **The Working Assumptions** of Sections 4.2 and 6.5 are explicit stronger assumptions under which the Strong Hypothesis becomes a theorem.
+- **The Empirical Confirmations** of Section 6 record what the experiments on 201+ instances actually show.
+- **The Suggestions** of Sections 4.2 and 7 are invitations to further work.
+
+Whether the Strong Hypothesis ultimately holds (solving P versus NP) or fails (revealing the limits of empirical validation and the importance of worst-case analysis), we believe the structured epistemic presentation — and the explicit focus on *how* the five heuristics cover each other's worst cases — advances our collective understanding of ensemble approximation. We invite vigorous scrutiny, attempted refutation, and independent validation from the theoretical computer science community.
 
 **Algorithm Availability:** The Hvala algorithm is publicly available for independent verification:
 - **PyPI:** https://pypi.org/project/hvala
 - **Installation:** `pip install hvala`
 - **Usage:** `from hvala.algorithm import find_vertex_cover`
-- **Source Code:** Available for inspection and verification
+- **Source Code:** Available for inspection and verification.
+
+**Companion Paper:** The degree-1 weighted vertex cover reduction is fully analysed in [[Vega26Hallelujah]](#references); a preprint is available at [[Vega25HallelujahPreprint]](#references).
+
+---
+
+## Acknowledgment
+
+The author is sincerely grateful to Iris, Marilin, Sonia, Yoselin, Arelis, Anissa, Liuva, Yudit, Gretel, Gema, and Blaquier, as well as Israel, Arderi, Juan Carlos, Yamil, Alejandro, Aroldo, Yary, Reinaldo, Alex, Emmanuel, and Michael for their constant support. Whether through encouragement, stimulating conversations, practical assistance, or simply being present during challenging moments, their contributions have played an important role in bringing this work to completion.
 
 ---
 
@@ -790,7 +791,7 @@ Whether the hypothesis proves true (solving P versus NP) or false (revealing lim
 
 **[khot2018pseudorandom]** Khot, Subhash and Minzer, Dor and Safra, Muli (2018). *Pseudorandom Sets in Grassmann Graph Have Near-Perfect Expansion.* 2018 IEEE 59th Annual Symposium on Foundations of Computer Science, 592–601. Paris, France. DOI: [10.1109/FOCS.2018.00062](https://doi.org/10.1109/FOCS.2018.00062).
 
-**[khot2008vertex]** Khot, Subhash and Regev, Oded (2008). *Vertex Cover Might Be Hard to Approximate to Within* $2-\epsilon$. Journal of Computer and System Sciences, 74(3), 335–349. DOI: [10.1016/j.jcss.2007.06.019](https://doi.org/10.1016/j.jcss.2007.06.019).
+**[khot2008vertex]** Khot, Subhash and Regev, Oded (2008). *Vertex Cover Might Be Hard to Approximate to Within* $2-\epsilon$*.* Journal of Computer and System Sciences, 74(3), 335–349. DOI: [10.1016/j.jcss.2007.06.019](https://doi.org/10.1016/j.jcss.2007.06.019).
 
 **[khot2002unique]** Khot, Subhash (2002). *On the Power of Unique 2-Prover 1-Round Games.* Proceedings of the 34th Annual ACM Symposium on Theory of Computing, 767–775. Montreal, Canada. DOI: [10.1145/509907.510017](https://doi.org/10.1145/509907.510017).
 
@@ -807,6 +808,10 @@ Whether the hypothesis proves true (solving P versus NP) or false (revealing lim
 **[banharnsakun2023new]** Banharnsakun, Anan (2023). *A New Approach for Solving the Minimum Vertex Cover Problem Using Artificial Bee Colony Algorithm.* Decision Analytics Journal, 6, 100175. DOI: [10.1016/j.dajour.2023.100175](https://doi.org/10.1016/j.dajour.2023.100175).
 
 **[RA15]** Rossi, Ryan and Ahmed, Nesreen (2015). *The Network Data Repository with Interactive Graph Analytics and Visualization.* Proceedings of the AAAI Conference on Artificial Intelligence, 29(1). DOI: [10.1609/aaai.v29i1.9277](https://doi.org/10.1609/aaai.v29i1.9277).
+
+**[Vega26Hallelujah]** Vega, Frank (2026). *An Approximate Solution to the Minimum Vertex Cover Problem: The Hallelujah Algorithm.* International Journal of Parallel, Emergent and Distributed Systems. Taylor & Francis. DOI: [10.1080/17445760.2026.2660724](https://doi.org/10.1080/17445760.2026.2660724). Accepted for publication.
+
+**[Vega25HallelujahPreprint]** Vega, Frank (2025). *An Approximate Solution to the Minimum Vertex Cover Problem: The Hallelujah Algorithm (Preprint, v2).* Available at: [https://www.preprints.org/manuscript/202510.2392/v2](https://www.preprints.org/manuscript/202510.2392/v2). Public preprint corresponding to the accepted IJPEDS article.
 
 **[Vega25Hvala]** Vega, Frank (2025). *The Hvala Algorithm.* Available at: [https://dev.to/frank_vega_987689489099bf/the-hvala-algorithm-5395](https://dev.to/frank_vega_987689489099bf/the-hvala-algorithm-5395).
 
@@ -827,7 +832,7 @@ Whether the hypothesis proves true (solving P versus NP) or false (revealing lim
 ---
 
 **Documentation**  
-Available as PDF at *[An Approximate Solution to the Minimum Vertex Cover Problem: The Hvala Algorithm](https://www.preprints.org/manuscript/202506.0875/v11)*.
+Available as PDF at *[An Approximate Solution to the Minimum Vertex Cover Problem: The Hvala Algorithm](https://www.preprints.org/manuscript/202506.0875/v12)*.
 
 The Hvala algorithm is available as a Python package: [https://pypi.org/project/hvala](https://pypi.org/project/hvala)  
 Source code and full experimental data are provided in the supplementary materials.
