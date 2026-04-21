@@ -211,12 +211,12 @@ As a useful corollary: once $v$ is removed, no neighbour of $v$ can subsequently
 
 ### 4.2 The Rigorous $\rho \le 2$ Bound
 
-**Theorem 2 (Worst-case 2-approximation).** For every finite simple undirected graph $G$, the output $S$ of FindVertexCover$(G)$ is a vertex cover of $G$ satisfying
+**Theorem 2 (Worst-case 2-approximation).** For every finite simple undirected graph $G$, the output $S$ of FindVertexCover(G) is a vertex cover of $G$ satisfying
 $$|S| \le 2 \cdot \mathrm{OPT}(G).$$
 
 *Proof.* Work with $G_0$, the graph after preprocessing; $\mathrm{OPT}(G_0) = \mathrm{OPT}(G)$.
 
-**Step 1: $C_1$ is a vertex cover of size $\le 2 \cdot \mathrm{OPT}(G_0)$.** The maximal matching $M$ covers every edge (no uncovered edge can be added). Since the edges of $M$ are vertex-disjoint, any minimum cover $C^*$ must contribute at least one endpoint per edge of $M$, so $|C^*| \ge |M|$. Therefore $|C_1| = 2|M| \le 2|C^*| = 2 \cdot \mathrm{OPT}(G_0)$.
+**Step 1: $C_1$ is a vertex cover of size $\le 2 \cdot \mathrm{OPT}(G_0)$.** The maximal matching $M$ covers every edge (no uncovered edge can be added). Since the edges of $M$ are vertex-disjoint, any minimum cover $C^{\ast}$ must contribute at least one endpoint per edge of $M$, so $|C^{\ast}| \ge |M|$. Therefore $|C_1| = 2|M| \le 2|C^{\ast}| = 2 \cdot \mathrm{OPT}(G_0)$.
 
 **Step 2: Pruning does not increase size.** By Lemma 1, $\tilde{C}_1 \subseteq C_1$ with $|\tilde{C}_1| \le |C_1|$, and $\tilde{C}_1$ is still a valid cover.
 
@@ -554,7 +554,7 @@ We validated Hvala on two independent experimental studies totalling 232 instanc
 
 Across both studies, every single approximation ratio observed on the 109 instances with known optima stays below $1.414$, with the maximum being $1.192$ on a narrow family of Sanchis adversarial graphs. This motivates the central open problem we propose as the natural continuation of this work:
 
-> *Is there a fixed constant $\epsilon > 0$ such that, for every finite simple undirected graph $G$, the Hvala algorithm achieves approximation ratio $|S|/\mathrm{OPT}(G) \le \sqrt{2} - \epsilon \approx 1.414 - \epsilon$ — or, failing that, does such a uniform bound hold on broad but restricted graph classes (bounded degree, bounded clique number, bounded treewidth, or structural families such as power-law and expander-like graphs)?*
+> Is there a fixed constant $\epsilon > 0$ such that, for every finite simple undirected graph $G$, the Hvala algorithm achieves approximation ratio $|S|/\mathrm{OPT}(G) \le \sqrt{2} - \epsilon \approx 1.414 - \epsilon$ — or, failing that, does such a uniform bound hold on broad but restricted graph classes (bounded degree, bounded clique number, bounded treewidth, or structural families such as power-law and expander-like graphs)?
 
 A fixed-constant $\sqrt{2} - \epsilon$ bound would either yield a uniform sub-$\sqrt{2}$ guarantee on all graphs (which, by the SETH-based hardness of Khot, Minzer and Safra [[khot2017independent,dinur2018towards,khot2018pseudorandom]](#references), would imply $\mathrm{P} = \mathrm{NP}$) or, more realistically, a uniform fixed-constant guarantee on a specific restricted class. We do *not* prove such a bound here. What we claim is that Hvala is the first simple linear-time algorithm for Minimum Vertex Cover whose combined theoretical and empirical profile — rigorous $\le 2$ bound, pointwise strict $< 2$, linear time, and observed ratios uniformly below $1.414$ across 232 diverse instances — makes the question above a plausible and well-posed target for future work.
 
