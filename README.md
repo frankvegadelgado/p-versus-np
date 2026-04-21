@@ -232,7 +232,7 @@ The inequality is strict on each graph. At the same time, the supremum of $|C_3|
 $$|S| < 2 \cdot \mathrm{OPT}(G).$$
 The supremum of $|S|/\mathrm{OPT}(G)$ over all finite simple graphs is equal to $2$: no uniform constant strictly less than $2$ bounds the Hvala ratio.
 
-*Proof.* Let $\tilde{C}_3 = \textsc{PruneRedundant}(\mathrm{adj}, C_3)$. By Lemma 1, $|\tilde{C}_3| \le |C_3| < 2 \cdot \mathrm{OPT}(G)$. Since $S = \arg\min_i |\tilde{C}_i|$, we have $|S| \le |\tilde{C}_3| < 2 \cdot \mathrm{OPT}(G)$. The supremum argument follows from the asymptotic-to-$2$ property of Hallelujah and the observation that a uniform constant $2 - \delta$ bounding $|S|$ would contradict the absence of such a constant for Hallelujah alone. $\square$
+*Proof.* Let $\tilde{C}_3 = \textsc{PruneRedundant}(\mathrm{adj}, C_3)$. By Lemma 1, $|\tilde{C}_3| \le |C_3| < 2 \cdot \mathrm{OPT}(G)$. Since $S = \arg\min_i |\tilde{C}_i|$, we have $|S| \le |\tilde{C}_3| < 2 \cdot \mathrm{OPT}(G)$. The supremum argument follows from the asymptotic-to $2$ property of Hallelujah and the observation that a uniform constant $2 - \delta$ bounding $|S|$ would contradict the absence of such a constant for Hallelujah alone. $\square$
 
 Two clarifying remarks: Theorem 2 is *not* rendered redundant by Corollary 1 — the theorem gives a self-contained $\le 2$ bound with no dependency on [[Vega26Hallelujah]](#references), while the corollary provides pointwise strictness at the cost of relying on the companion paper. The strict inequality in Corollary 1 is pointwise only: it does not provide a uniform constant $2 - \epsilon$, and no such constant is known.
 
@@ -556,7 +556,7 @@ Across both studies, every single approximation ratio observed on the 109 instan
 
 > Is there a fixed constant $\epsilon > 0$ such that, for every finite simple undirected graph $G$, the Hvala algorithm achieves approximation ratio $|S|/\mathrm{OPT}(G) \le \sqrt{2} - \epsilon \approx 1.414 - \epsilon$ — or, failing that, does such a uniform bound hold on broad but restricted graph classes (bounded degree, bounded clique number, bounded treewidth, or structural families such as power-law and expander-like graphs)?
 
-A fixed-constant $\sqrt{2} - \epsilon$ bound would either yield a uniform sub-$\sqrt{2}$ guarantee on all graphs (which, by the SETH-based hardness of Khot, Minzer and Safra [[khot2017independent,dinur2018towards,khot2018pseudorandom]](#references), would imply $\mathrm{P} = \mathrm{NP}$) or, more realistically, a uniform fixed-constant guarantee on a specific restricted class. We do *not* prove such a bound here. What we claim is that Hvala is the first simple linear-time algorithm for Minimum Vertex Cover whose combined theoretical and empirical profile — rigorous $\le 2$ bound, pointwise strict $< 2$, linear time, and observed ratios uniformly below $1.414$ across 232 diverse instances — makes the question above a plausible and well-posed target for future work.
+A fixed-constant $\sqrt{2} - \epsilon$ bound would either yield a uniform sub $\sqrt{2}$ guarantee on all graphs (which, by the SETH-based hardness of Khot, Minzer and Safra [[khot2017independent,dinur2018towards,khot2018pseudorandom]](#references), would imply $\mathrm{P} = \mathrm{NP}$) or, more realistically, a uniform fixed-constant guarantee on a specific restricted class. We do *not* prove such a bound here. What we claim is that Hvala is the first simple linear-time algorithm for Minimum Vertex Cover whose combined theoretical and empirical profile — rigorous $\le 2$ bound, pointwise strict $< 2$, linear time, and observed ratios uniformly below $1.414$ across 232 diverse instances — makes the question above a plausible and well-posed target for future work.
 
 **Algorithm Availability:**
 - **Package:** https://pypi.org/project/hvala
@@ -589,7 +589,7 @@ The author is sincerely grateful to Iris, Marilin, Sonia, Yoselin, Arelis, Aniss
 
 **[khot2018pseudorandom]** Khot, Subhash and Minzer, Dor and Safra, Muli (2018). *Pseudorandom Sets in Grassmann Graph Have Near-Perfect Expansion.* 2018 IEEE 59th Annual Symposium on Foundations of Computer Science, 592–601. Paris, France. DOI: [10.1109/FOCS.2018.00062](https://doi.org/10.1109/FOCS.2018.00062).
 
-**[khot2008vertex]** Khot, Subhash and Regev, Oded (2008). *Vertex Cover Might Be Hard to Approximate to Within $2-\epsilon$.* Journal of Computer and System Sciences, 74(3), 335–349. DOI: [10.1016/j.jcss.2007.06.019](https://doi.org/10.1016/j.jcss.2007.06.019).
+**[khot2008vertex]** Khot, Subhash and Regev, Oded (2008). *Vertex Cover Might Be Hard to Approximate to Within* $2-\epsilon$*.* Journal of Computer and System Sciences, 74(3), 335–349. DOI: [10.1016/j.jcss.2007.06.019](https://doi.org/10.1016/j.jcss.2007.06.019).
 
 **[khot2002unique]** Khot, Subhash (2002). *On the Power of Unique 2-Prover 1-Round Games.* Proceedings of the 34th Annual ACM Symposium on Theory of Computing, 767–775. Montreal, Canada. DOI: [10.1145/509907.510017](https://doi.org/10.1145/509907.510017).
 
