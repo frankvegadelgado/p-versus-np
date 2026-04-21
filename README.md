@@ -59,7 +59,7 @@ All four candidates are then individually subjected to redundant-vertex pruning,
 
 ### 2.2 Main Algorithm
 
-**Algorithm 1:** Hvala: FindVertexCover$(G)$  
+**Algorithm 1:** Hvala: FindVertexCover(G)  
 **Input:** Simple undirected graph $G = (V, E)$  
 **Output:** Vertex cover $S \subseteq V$ satisfying $|S| \le 2 \cdot \mathrm{OPT}(G)$
 
@@ -86,7 +86,7 @@ All four candidates are then individually subjected to redundant-vertex pruning,
 
 ### 2.3 Subroutines
 
-**Algorithm 2:** MaximalMatchingVC$(G)$
+**Algorithm 2:** MaximalMatchingVC(G)
 
 ```
 Input: Graph G
@@ -100,7 +100,7 @@ Output: Vertex cover C_1
 6: return C_1
 ```
 
-**Algorithm 3:** BucketDegreeGreedy$(adj)$
+**Algorithm 3:** BucketDegreeGreedy(adj)
 
 ```
 Input: Adjacency table adj of a graph G = (V, E)
@@ -125,7 +125,7 @@ Output: Vertex cover C_2
 17: return C_2
 ```
 
-**Algorithm 4:** HallelujahReduction$(G)$ — the degree-1 weighted reduction of [[Vega26Hallelujah]](#references)
+**Algorithm 4:** HallelujahReduction(G) — the degree-1 weighted reduction of [[Vega26Hallelujah]](#references)
 
 ```
 Input: Graph G = (V, E)
@@ -144,7 +144,7 @@ Output: Vertex cover C_3
 11: return smaller of S_uw and S_w
 ```
 
-**Algorithm 4a:** MinVCDegree1$(G', w)$ — exact weighted VC on a max-degree-1 graph
+**Algorithm 4a:** MinVCDegree1(G', w) — exact weighted VC on a max-degree-1 graph
 
 ```
 Input: Graph G' of maximum degree 1; weight w
@@ -166,7 +166,7 @@ Output: Minimum weighted vertex cover D
 14: return D
 ```
 
-**Algorithm 5:** PruneRedundant$(adj, C)$ — linear-time redundant-vertex pruning
+**Algorithm 5:** PruneRedundant(adj, C) — linear-time redundant-vertex pruning
 
 ```
 Input: Adjacency table adj of G and a vertex cover C of G
